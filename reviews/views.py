@@ -1,29 +1,20 @@
-from django.views import View
 from django.views.generic.base import TemplateView
-from django.http import HttpResponseRedirect
-from django.shortcuts import render
+from django.views.generic import ListView, DetailView
+from django.views.generic.edit import CreateView
 from .forms import ReviewForm
 from .models import Feedback
 
 
 # Create your views here.
-class ReviewView(View):
+class ReviewView(CreateView):
+    model = Feedback
+    form_class = ReviewForm
+    template_name = 'reviews/review.html'
+    success_url = 'thanks'
 
-    def get(self, request):
-        form = ReviewForm()
-        return render(request, 'reviews/review.html', {
-            'form': form,
-        })
-
-    def post(self, request):
-        form = ReviewForm(request.POST)
-        if form.is_valid():
-            form.save()
-            return HttpResponseRedirect('thanks')
-        else:
-            return render(request, 'reviews/review.html', {
-                'form': form,
-            })
+    def form_valid(self, form):
+        form.save()
+        return super().form_valid(form)
 
 
 class ThankYou(TemplateView):
@@ -35,20 +26,18 @@ class ThankYou(TemplateView):
         return context
 
 
-class ReviewList(TemplateView):
+class ReviewList(ListView):
     template_name = 'reviews/review_list.html'
+    model = Feedback
+    context_object_name = 'reviews'
 
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['reviews'] = Feedback.objects.all()
-        return context
+    def get_queryset(self):
+        base_query = super().get_queryset()
+        data = base_query.filter(rating__lt=10)
+        return data
 
 
-class ReviewDetails(TemplateView):
+class ReviewDetails(DetailView):
     template_name = 'reviews/review_details.html'
-
-    def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        review_id = kwargs['id']
-        context['review'] = Feedback.objects.get(pk=review_id)
-        return context
+    model = Feedback
+    context_object_name = 'review'
